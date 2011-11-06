@@ -18,7 +18,7 @@
 	Plugin URI: http://www.andreasnorman.se/norman-archive-widget
 	Description: Norman Advanced Archive Widget is a free replacement for the standard WordPress archive widget. Lots of customization options to satisfy your needs.
 	Author: Andreas Norman
-	Version: 1.0
+	Version: 1.1
 	Author URI: http://www.andreasnorman.se
 */
 
@@ -28,24 +28,34 @@ class NormanArchiveWidget extends WP_Widget {
 		parent::WP_Widget(false, $name = 'Norman Adv. Archive Widget');	
 	}
 	
-	function get_years() {
-	    global $wpdb;
-
+	function get_years($current_category_id) {
+		global $wpdb;
+		
+		if ($current_category_id) {
+	    $where = apply_filters('getarchives_where', "WHERE post_type = 'post' AND post_status = 'publish' AND $wpdb->term_taxonomy.taxonomy = 'category' AND $wpdb->term_taxonomy.term_id IN ($current_category_id)");
+			$join = apply_filters('getarchives_join', " INNER JOIN $wpdb->term_relationships ON ($wpdb->posts.ID = $wpdb->term_relationships.object_id) INNER JOIN $wpdb->term_taxonomy ON ($wpdb->term_relationships.term_taxonomy_id = $wpdb->term_taxonomy.term_taxonomy_id)");
+		} else {
 	    $where = apply_filters('getarchives_where', "WHERE post_type = 'post' AND post_status = 'publish'");
-	    $join = apply_filters('getarchives_join', "");
+			$join = apply_filters('getarchives_join', "");
+		}
 
-	    $sql = "SELECT DISTINCT YEAR(post_date) AS `year`, count(ID) as posts ";
-	    $sql .="FROM {$wpdb->posts} {$join} {$where} ";
-	    $sql .="GROUP BY YEAR(post_date) ORDER BY post_date DESC";
+    $sql = "SELECT DISTINCT YEAR(post_date) AS `year`, count(ID) as posts ";
+    $sql .="FROM {$wpdb->posts} {$join} {$where} ";
+    $sql .="GROUP BY YEAR(post_date) ORDER BY post_date DESC";
 
-	    return $wpdb->get_results($sql);
+    return $wpdb->get_results($sql);
 	}
 
-	function get_months($year) {
+	function get_months($year, $current_category_id) {
 	    global $wpdb;
 
-	    $where = apply_filters('getarchives_where', "WHERE post_type = 'post' AND post_status = 'publish' AND YEAR(post_date) = {$year}");
-	    $join = apply_filters('getarchives_join', "");
+			if ($current_category_id) {
+		    $where = apply_filters('getarchives_where', "WHERE post_type = 'post' AND post_status = 'publish' AND YEAR(post_date) = {$year} AND $wpdb->term_taxonomy.taxonomy = 'category' AND $wpdb->term_taxonomy.term_id IN ($current_category_id)");
+				$join = apply_filters('getarchives_join', " INNER JOIN $wpdb->term_relationships ON ($wpdb->posts.ID = $wpdb->term_relationships.object_id) INNER JOIN $wpdb->term_taxonomy ON ($wpdb->term_relationships.term_taxonomy_id = $wpdb->term_taxonomy.term_taxonomy_id)");
+			} else {
+		    $where = apply_filters('getarchives_where', "WHERE post_type = 'post' AND post_status = 'publish' AND YEAR(post_date) = {$year}");
+		    $join = apply_filters('getarchives_join', "");
+			}
 
 	    $sql = "SELECT DISTINCT YEAR(post_date) AS `year`, MONTH(post_date) AS `month`, count(ID) as posts ";
 	    $sql .="FROM {$wpdb->posts} {$join} {$where} ";
@@ -54,19 +64,24 @@ class NormanArchiveWidget extends WP_Widget {
 	    return $wpdb->get_results($sql);
 	}
 
-	function get_posts($year, $month) {
-	    global $wpdb;
+	function get_posts($year, $month, $current_category_id) {
+    global $wpdb;
 
-	    if (empty($year) || empty($month))
-	        return null;
+    if (empty($year) || empty($month))
+        return null;
 
+		if ($current_category_id) {
+	    $where = apply_filters('getarchives_where', "WHERE post_type = 'post' AND post_status = 'publish' AND YEAR(post_date) = {$year} AND MONTH(post_date) = {$month} AND $wpdb->term_taxonomy.taxonomy = 'category' AND $wpdb->term_taxonomy.term_id IN ($current_category_id)");
+			$join = apply_filters('getarchives_join', " INNER JOIN $wpdb->term_relationships ON ($wpdb->posts.ID = $wpdb->term_relationships.object_id) INNER JOIN $wpdb->term_taxonomy ON ($wpdb->term_relationships.term_taxonomy_id = $wpdb->term_taxonomy.term_taxonomy_id)");
+		} else {
 	    $where = apply_filters('getarchives_where', "WHERE post_type = 'post' AND post_status = 'publish' AND YEAR(post_date) = {$year} AND MONTH(post_date) = {$month}");
 	    $join = apply_filters('getarchives_join', "");
+		}
 
-	    $sql = "SELECT ID, post_title, post_name FROM {$wpdb->posts} ";
-	    $sql .="$join $where ORDER BY post_date DESC";
+    $sql = "SELECT ID, post_title, post_name FROM {$wpdb->posts} ";
+    $sql .="$join $where ORDER BY post_date DESC";
 
-	    return $wpdb->get_results($sql);
+    return $wpdb->get_results($sql);
 	}	
 
 	function widget($args, $instance) {
@@ -78,12 +93,24 @@ class NormanArchiveWidget extends WP_Widget {
 		$truncmonth = empty($instance['truncmonth']) ? 0 : $instance['truncmonth'];
 		$jsexpand = empty($instance['jsexpand']) ? 0 : $instance['jsexpand'];
 		$groupbyyear = empty($instance['groupbyyear']) ? 0 : $instance['groupbyyear'];
+		$limitbycategory = empty($instance['limitbycategory']) ? 0 : $instance['limitbycategory'];
+		#$hideonnoncategory = empty($instance['hideonnoncategory']) ? 0 : $instance['hideonnoncategory'];
 		$title = empty($instance['title']) ? 'Archive' : $instance['title'];
+		
+		if ($limitbycategory) {
+			$current_category_id = get_query_var('cat');
+		} else {
+			$current_category_id = false;
+		}
+		
 		if ($jsexpand == 1) {
 			$groupbyyear = 1;
 		}
+		if ($groupbyyear == 1) {
+			$jsexpand = 1;
+		}
 		
-		$years = $this->get_years();
+		$years = $this->get_years($current_category_id);
 		$post_year = $years[0]->year;
 		
 		echo $before_widget;
@@ -91,7 +118,7 @@ class NormanArchiveWidget extends WP_Widget {
 		echo '<ul>';
 	  for ($i = 0; $x < count($years[$i]); $i++) {
 			$this_year = $jal_options['expandcurrent'] && $years[$i]->year == $post_year;
-			$months = $this->get_months($years[$i]->year);
+			$months = $this->get_months($years[$i]->year, $current_category_id);
 			
 			if ($groupbyyear) {
 				$year_url = get_year_link($years[$i]->year);
@@ -166,6 +193,8 @@ class NormanArchiveWidget extends WP_Widget {
 		$instance['title'] = strip_tags($new_instance['title']);
 		$instance['jsexpand'] = strip_tags($new_instance['jsexpand']);
 		$instance['groupbyyear'] = strip_tags($new_instance['groupbyyear']);
+		$instance['limitbycategory'] = strip_tags($new_instance['limitbycategory']);
+		#$instance['hideonnoncategory'] = strip_tags($new_instance['hideonnoncategory']);
 		
 		return $instance;
 	}
@@ -177,6 +206,9 @@ class NormanArchiveWidget extends WP_Widget {
 		$truncmonth = empty($instance['truncmonth']) ? 0 : esc_attr($instance['truncmonth']);
 		$jsexpand = empty($instance['jsexpand']) ? 0 : esc_attr($instance['jsexpand']);
 		$groupbyyear = empty($instance['groupbyyear']) ? 0 : esc_attr($instance['groupbyyear']);
+		$limitbycategory = empty($instance['limitbycategory']) ? 0 : esc_attr($instance['limitbycategory']);
+		#$hideonnoncategory = empty($instance['hideonnoncategory']) ? 0 : esc_attr($instance['hideonnoncategory']);
+		
 		if ($jsexpand == 1) {
 			$groupbyyear = 1;
 		}
@@ -190,28 +222,39 @@ class NormanArchiveWidget extends WP_Widget {
     </p>
 
     <p>
-      <label for="<?php echo $this->get_field_id('groupbyyear'); ?>"><?php _e('Group By Year (Collaps list):'); ?></label> 
+      <input <?php echo ($limitbycategory=='1'?'checked="checked"':''); ?> id="<?php echo $this->get_field_id('limitbycategory'); ?>" name="<?php echo $this->get_field_name('limitbycategory'); ?>" type="checkbox" value="1" />
+      <label for="<?php echo $this->get_field_id('limitbycategory'); ?>"><?php _e('Limit to current category'); ?></label> 
+    </p>
+
+<!--
+    <p>
+      <input <?php echo ($hideonnoncategory=='1'?'checked="checked"':''); ?> id="<?php echo $this->get_field_id('hideonnoncategory'); ?>" name="<?php echo $this->get_field_name('hideonnoncategory'); ?>" type="checkbox" value="1" />
+      <label for="<?php echo $this->get_field_id('hideonnoncategory'); ?>"><?php _e('Hide on none category pages'); ?></label> 
+    </p>
+-->
+    <p>
       <input <?php echo ($groupbyyear=='1'?'checked="checked"':''); ?> id="<?php echo $this->get_field_id('groupbyyear'); ?>" name="<?php echo $this->get_field_name('groupbyyear'); ?>" type="checkbox" value="1" />
+      <label for="<?php echo $this->get_field_id('groupbyyear'); ?>"><?php _e('Group By Year (Collaps list)'); ?></label> 
     </p>
 
     <p>
-      <label for="<?php echo $this->get_field_id('jsexpand'); ?>"><?php _e('Collaps list (Groups by year):'); ?></label> 
       <input <?php echo ($jsexpand=='1'?'checked="checked"':''); ?> id="<?php echo $this->get_field_id('jsexpand'); ?>" name="<?php echo $this->get_field_name('jsexpand'); ?>" type="checkbox" value="1" />
+      <label for="<?php echo $this->get_field_id('jsexpand'); ?>"><?php _e('Collaps list (Groups by year)'); ?></label> 
     </p>
 
     <p>
-      <label for="<?php echo $this->get_field_id('showcount'); ?>"><?php _e('Show Count:'); ?></label> 
       <input <?php echo ($showcount=='1'?'checked="checked"':''); ?> id="<?php echo $this->get_field_id('showcount'); ?>" name="<?php echo $this->get_field_name('showcount'); ?>" type="checkbox" value="1" />
+      <label for="<?php echo $this->get_field_id('showcount'); ?>"><?php _e('Show Count'); ?></label> 
     </p>
 
     <p>
-      <label for="<?php echo $this->get_field_id('linkcounter'); ?>"><?php _e('Include count in link:'); ?></label> 
       <input <?php echo ($linkcounter=='1'?'checked="checked"':''); ?> id="<?php echo $this->get_field_id('linkcounter'); ?>" name="<?php echo $this->get_field_name('linkcounter'); ?>" type="checkbox" value="1" />
+      <label for="<?php echo $this->get_field_id('linkcounter'); ?>"><?php _e('Include count in link'); ?></label> 
     </p>
 
     <p>
-      <label for="<?php echo $this->get_field_id('truncmonth'); ?>"><?php _e('Truncate month name:'); ?></label> 
       <input <?php echo ($truncmonth=='1'?'checked="checked"':''); ?> id="<?php echo $this->get_field_id('truncmonth'); ?>" name="<?php echo $this->get_field_name('truncmonth'); ?>" type="checkbox" value="1" />
+      <label for="<?php echo $this->get_field_id('truncmonth'); ?>"><?php _e('Truncate month name'); ?></label> 
     </p>
 
  	  <?php 

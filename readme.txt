@@ -14,10 +14,11 @@ Norman Advanced Archive Widget is a free replacement for the standard WordPress 
 
 = Features: =
 
-* Group monthly archives by year 
+* Option to limit display of archive by current category. Only the posts in the current category will be listed
+* Option to group monthly archives by year 
 * JQuery powered fold to show and hide monthly archives in a year.
 * Option to truncate month names or not.
-* Show/Hide archive count and the design option to decide if you want the count to be displayed inside the link or not.
+* Option to show/hide archive count and the design option to decide if you want the count to be displayed inside the link or not.
 
 == Installation ==
 
@@ -36,6 +37,10 @@ None yet...
 For questions, issues or feature requests, please post them in the <a href="http://wordpress.org/tags/Norman-Advanced-Archive-Widget?forum_id=10">WordPress Forum</a> and make sure to tag the post with "Norman-Advanced-Archive-Widget".
 
 == Changelog ==
+
+= 1.1 =
+New feature
+* Option to limit display of archive by current category. Only the posts in the current category will be listed
 
 = 1.0 =
 Initial release
