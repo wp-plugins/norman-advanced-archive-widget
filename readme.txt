@@ -44,3 +44,7 @@ New feature
 
 = 1.0 =
 Initial release
+
+== Screenshots ==
+
+1. The administration of the widget
