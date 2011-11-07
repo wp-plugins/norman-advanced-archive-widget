@@ -4,7 +4,7 @@ Donate link: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_i
 Tags: widget, archive, jquery
 Requires at least: 3.0
 Tested up to: 3.1.2
-Stable tag: 1.0
+Stable tag: 1.1
 
 Norman Advanced Archive Widget is a free replacement for the standard WordPress archive widget. Lots of customization options to satisfy your needs.   
 
